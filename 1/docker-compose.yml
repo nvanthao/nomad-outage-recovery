@@ -1,0 +1,41 @@
+services:
+  consul-server:
+    image: consul:1.15.4
+    container_name: consul-server
+    volumes:
+      - ./consul-server.hcl:/opt/consul/config.hcl
+    ports:
+      - 8500:8500
+    entrypoint:
+      - consul
+      - agent
+      - -config-file=/opt/consul/config.hcl
+
+  nomad-server:
+    build:
+      context: .
+    deploy:
+      replicas: 3
+    volumes:
+      - ./nomad-server.hcl:/opt/nomad/config.hcl
+      - ./consul-client.hcl:/opt/consul/config.hcl
+      - /sys/fs/cgroup:/sys/fs/cgroup
+    ports:
+      - 4646
+    depends_on:
+      - consul-server
+
+  nomad-client:
+    build:
+      context: .
+    deploy:
+      replicas: 3
+    cap_add:
+      - SYS_ADMIN
+    cgroup: host
+    volumes:
+      - ./nomad-client.hcl:/opt/nomad/config.hcl
+      - ./consul-client.hcl:/opt/consul/config.hcl
+      - /sys/fs/cgroup:/sys/fs/cgroup
+    depends_on:
+      - consul-server
